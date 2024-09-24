@@ -324,7 +324,7 @@ sub validate
             }
         }
 	}
-
+    exit;
     }
     $self->{validated} = (@errs == 0);
     return(@errs == 0, \@errs, $total_comp_size, $total_uncomp_size);
