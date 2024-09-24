@@ -37,6 +37,12 @@ During the localize step, they will be retrieved from SRA if possible.
 
 =cut
 
+'''
+if ($text =~ m{/\w+@\w+/\w+/\w+}) {
+    print "Pattern matched!\n";
+} 
+'''
+
 sub create_from_asssembly_params
 {
     my($class, $params, $expand_sra) = @_;
@@ -222,7 +228,7 @@ sub localize_libraries
 Validate this readset.
 
 Walk the read files and ensure that the files exist in the 
-workspace and are not zero sized.
+workspace or locally and are not zero sized.
 
 If $metadata_base is provided, write SRA metadata to files with that base name,
 extended with the SRA id and json/xml suffixes.
@@ -283,25 +289,40 @@ sub validate
 	my @files = $lib->files();
 	for my $f (@files)
 	{
-	    my $s = $ws->stat($f);
+        # check if file is a workspace file, if not check local
+        if ($f =~ m{/\w+@\w+/\w+/\w+}) 
+        {
+            my $s = $ws->stat($f);
 
-	    if (!$s)
-	    {
-		push(@errs, "File $f does not exist");
-	    }
-	    elsif ($s->size == 0)
-	    {
-		push(@errs, "File $f has zero size");
-	    }
-	    else
-	    {
-		if ($ws->file_is_gzipped($f))
-		{
-		    $total_comp_size += $s->size;
-		} else {
-		    $total_uncomp_size += $s->size;
-		}
-	    }
+            if (!$s)
+            {
+            push(@errs, "File $f does not exist");
+            }
+            elsif ($s->size == 0)
+            {
+            push(@errs, "File $f has zero size");
+            }
+            else
+            {
+            if ($ws->file_is_gzipped($f))
+            {
+                $total_comp_size += $s->size;
+            } else {
+                $total_uncomp_size += $s->size;
+            }
+            }
+        }
+        else 
+        {
+            if (-e $f && -s $f > 0) 
+            {
+                print "$f exists\n";    
+            }
+            else 
+            {
+                print "$f does not exist\n";
+            }
+        }
 	}
 
     }
