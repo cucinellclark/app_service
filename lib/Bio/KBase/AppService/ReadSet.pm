@@ -37,12 +37,6 @@ During the localize step, they will be retrieved from SRA if possible.
 
 =cut
 
-'''
-if ($text =~ m{/\w+@\w+/\w+/\w+}) {
-    print "Pattern matched!\n";
-} 
-'''
-
 sub create_from_asssembly_params
 {
     my($class, $params, $expand_sra) = @_;
@@ -206,19 +200,23 @@ sub localize_libraries
 
     #
     # Update names.
+    # Skip updating the name if not a workspace file
     #
     while (my($name, $list) = each %names)
     {
 	for my $ent (@$list)
 	{
 	    my($file, $base, $lib, $fk) = @$ent;
-	    my $old = $lib->{$fk};
-	    my $nk = $fk;
-	    $nk =~ s/read_file/read_path/;
-	    $lib->{$nk} = "$local_path/$base";
+        # check if file is a workspace file, skip updating name if not 
+        if ($file =~ m{/\w+@\w+/\w+/\w+})
+        {
+            my $old = $lib->{$fk};
+            my $nk = $fk;
+            $nk =~ s/read_file/read_path/;
+            $lib->{$nk} = "$local_path/$base";
+        }
 	}
     }
-    #die Dumper($self);
 }
 
 =item B<validate>
@@ -292,6 +290,7 @@ sub validate
         # check if file is a workspace file, if not check local
         if ($f =~ m{/\w+@\w+/\w+/\w+}) 
         {
+            print "workspace\n";
             my $s = $ws->stat($f);
 
             if (!$s)
@@ -314,17 +313,27 @@ sub validate
         }
         else 
         {
-            if (-e $f && -s $f > 0) 
+            if (! -e $f) 
             {
-                print "$f exists\n";    
+                push(@errs, "File $f does not exist");
+            }
+            elsif (-s $f == 0)
+            {
+                push(@errs, "File $f has zero size");
             }
             else 
             {
-                print "$f does not exist\n";
+                if ($f =~ /\.gz$/)
+                {
+                    $total_comp_size += -s $f;
+                }
+                else 
+                {
+                    $total_uncomp_size += -s $f;
+                }
             }
         }
 	}
-    exit;
     }
     $self->{validated} = (@errs == 0);
     return(@errs == 0, \@errs, $total_comp_size, $total_uncomp_size);
