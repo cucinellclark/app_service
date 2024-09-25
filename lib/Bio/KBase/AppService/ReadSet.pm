@@ -208,11 +208,12 @@ sub localize_libraries
 	{
 	    my($file, $base, $lib, $fk) = @$ent;
         # check if file is a workspace file, skip updating name if not 
+        my $old = $lib->{$fk};
+        my $nk = $fk;
+        $nk =~ s/read_file/read_path/;
+        $lib->{$nk} = $old;
         if ($file =~ m{/\w+@\w+/\w+/\w+})
         {
-            my $old = $lib->{$fk};
-            my $nk = $fk;
-            $nk =~ s/read_file/read_path/;
             $lib->{$nk} = "$local_path/$base";
         }
 	}
@@ -448,13 +449,17 @@ sub stage_in
 	{
 	    for my $fk ($lib->file_keys)
 	    {
-		(my $path_key = $fk) =~ s/read_file/read_path/;
-		my $file = $lib->{$fk};
-		my $path = $lib->{$path_key};
-		next if $done{$file,$path}++;
-		
-		print STDERR "Load $file to $path\n";
-		$ws->download_file($file, $path, 1);
+            # only download ws file if it follows the workspace pattern
+            if ($lib->{$fk} =~ m{/\w+@\w+/\w+/\w+})
+            {
+                (my $path_key = $fk) =~ s/read_file/read_path/;
+                my $file = $lib->{$fk};
+                my $path = $lib->{$path_key};
+                next if $done{$file,$path}++;
+                
+                print STDERR "Load $file to $path\n";
+                $ws->download_file($file, $path, 1);
+            }
 	    }
 	}
     }
